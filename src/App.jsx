@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Spline from '@splinetool/react-spline'
 import { Github, Linkedin, Mail, ExternalLink, Code2, Sparkles, ArrowRight, Menu, X, Briefcase, Rocket, Layers } from 'lucide-react'
 
@@ -10,49 +10,152 @@ function Badge({ children }) {
   )
 }
 
+// 3D tilt wrapper for interactive cards
+function TiltCard({ children, className = '' }) {
+  const ref = useRef(null)
+  const frame = useRef(0)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+
+    const R = 10 // max rotation deg
+    const Z = 24 // pop-out in px
+
+    const onMove = (e) => {
+      const rect = el.getBoundingClientRect()
+      const px = (e.clientX - rect.left) / rect.width
+      const py = (e.clientY - rect.top) / rect.height
+      const rx = (py - 0.5) * -2 * R
+      const ry = (px - 0.5) * 2 * R
+      cancelAnimationFrame(frame.current)
+      frame.current = requestAnimationFrame(() => {
+        el.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateZ(${Z}px)`
+      })
+    }
+    const onLeave = () => {
+      cancelAnimationFrame(frame.current)
+      frame.current = requestAnimationFrame(() => {
+        el.style.transform = 'rotateX(0deg) rotateY(0deg) translateZ(0px)'
+      })
+    }
+
+    el.addEventListener('mousemove', onMove)
+    el.addEventListener('mouseleave', onLeave)
+    return () => {
+      el.removeEventListener('mousemove', onMove)
+      el.removeEventListener('mouseleave', onLeave)
+    }
+  }, [])
+
+  return (
+    <div className={`[transform-style:preserve-3d] will-change-transform transition-transform duration-200 ${className}`}
+         ref={ref}>
+      {children}
+    </div>
+  )
+}
+
+// Floating 3D decorations (orbs) used across sections
+function FloatingDecor({ count = 3, variant = 'blue' }) {
+  const colors = useMemo(() => {
+    if (variant === 'purple') return ['#a78bfa22', '#c4b5fd22']
+    if (variant === 'pink') return ['#f472b622', '#f9a8d422']
+    return ['#60a5fa22', '#93c5fd22']
+  }, [variant])
+
+  const items = Array.from({ length: count })
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10 [perspective:1000px] overflow-hidden">
+      <style>{`
+        @keyframes floatY { 0%{ transform: translateY(0) } 50%{ transform: translateY(-16px) } 100%{ transform: translateY(0) } }
+        @keyframes rotateOrb { 0%{ transform: rotate(0deg) } 100%{ transform: rotate(360deg) } }
+      `}</style>
+      {items.map((_, i) => {
+        const size = 140 + Math.round(Math.random() * 120)
+        const top = Math.round(Math.random() * 80)
+        const left = Math.round(Math.random() * 80)
+        const delay = (Math.random() * 4).toFixed(2)
+        const z = (Math.random() * 200 - 100).toFixed(0) // [-100, 100]
+        return (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: `${top}%`,
+              left: `${left}%`,
+              width: size,
+              height: size,
+              transform: `translateZ(${z}px)`,
+              filter: 'blur(0.2px)'
+            }}
+          >
+            <div
+              className="rounded-full shadow-xl"
+              style={{
+                width: '100%',
+                height: '100%',
+                background: `radial-gradient(circle at 30% 30%, ${colors[1]} 0%, ${colors[0]} 60%, transparent 70%)`,
+                animation: `floatY ${6 + i}s ease-in-out ${delay}s infinite`,
+              }}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function Project({ title, desc, tags = [], link, repo }) {
   return (
-    <div className="group relative rounded-xl border border-white/30 bg-white/60 backdrop-blur p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/5 group-hover:to-blue-500/5 pointer-events-none" />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-slate-800 text-lg">{title}</h3>
-          <p className="text-sm text-slate-600 mt-1">{desc}</p>
+    <TiltCard className="group relative">
+      <div className="relative rounded-xl border border-white/30 bg-white/60 backdrop-blur p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/5 group-hover:to-blue-500/5 pointer-events-none" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-slate-800 text-lg">{title}</h3>
+            <p className="text-sm text-slate-600 mt-1">{desc}</p>
+          </div>
+          <Code2 className="text-purple-500" size={20} />
         </div>
-        <Code2 className="text-purple-500" size={20} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tags.map((t) => (
+            <span key={t} className="text-[10px] uppercase tracking-wide bg-slate-900/5 text-slate-700 px-2 py-1 rounded-md ring-1 ring-slate-900/10">
+              {t}
+            </span>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center gap-3 text-sm">
+          {link && (
+            <a href={link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700">
+              Live <ExternalLink size={14} />
+            </a>
+          )}
+          {repo && (
+            <a href={repo} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900">
+              Code <Github size={14} />
+            </a>
+          )}
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {tags.map((t) => (
-          <span key={t} className="text-[10px] uppercase tracking-wide bg-slate-900/5 text-slate-700 px-2 py-1 rounded-md ring-1 ring-slate-900/10">
-            {t}
-          </span>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-3 text-sm">
-        {link && (
-          <a href={link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700">
-            Live <ExternalLink size={14} />
-          </a>
-        )}
-        {repo && (
-          <a href={repo} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900">
-            Code <Github size={14} />
-          </a>
-        )}
-      </div>
-    </div>
+    </TiltCard>
   )
 }
 
 function Service({ icon: Icon, title, desc }) {
   return (
-    <div className="rounded-xl border border-white/40 bg-white/70 p-6 shadow-sm hover:shadow-md transition">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600/10 to-purple-600/10 text-blue-700">
-        <Icon size={18} />
+    <TiltCard>
+      <div className="rounded-xl border border-white/40 bg-white/70 p-6 shadow-sm hover:shadow-md transition">
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600/10 to-purple-600/10 text-blue-700">
+          <Icon size={18} />
+        </div>
+        <h3 className="mt-3 font-semibold text-slate-800">{title}</h3>
+        <p className="mt-1 text-sm text-slate-600">{desc}</p>
       </div>
-      <h3 className="mt-3 font-semibold text-slate-800">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{desc}</p>
-    </div>
+    </TiltCard>
   )
 }
 
@@ -71,6 +174,41 @@ function TimelineItem({ role, company, period, points }) {
           ))}
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Subtle parallax layers in hero
+function HeroParallax() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+
+    const onMove = (e) => {
+      const rect = el.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / rect.width - 0.5
+      const y = (e.clientY - rect.top) / rect.height - 0.5
+      const layers = el.querySelectorAll('[data-depth]')
+      layers.forEach((node) => {
+        const d = parseFloat(node.getAttribute('data-depth') || '0')
+        const tx = -x * d * 20
+        const ty = -y * d * 20
+        node.style.transform = `translate3d(${tx}px, ${ty}px, 0)`
+      })
+    }
+
+    el.addEventListener('mousemove', onMove)
+    return () => el.removeEventListener('mousemove', onMove)
+  }, [])
+
+  return (
+    <div ref={ref} className="absolute inset-0 pointer-events-none">
+      <div data-depth="0.2" className="absolute -top-10 -left-10 h-40 w-40 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/30 blur-2xl" />
+      <div data-depth="0.4" className="absolute top-10 right-10 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-500/30 to-cyan-500/30 blur-xl" />
+      <div data-depth="0.6" className="absolute bottom-10 left-1/3 h-24 w-24 rounded-full bg-gradient-to-br from-pink-500/30 to-purple-500/30 blur-xl" />
     </div>
   )
 }
@@ -147,6 +285,7 @@ export default function App() {
         </div>
         {/* Gradient overlay for readability */}
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/70 via-white/40 to-white/90" />
+        <HeroParallax />
 
         <div className="relative z-10">
           <div className="mx-auto max-w-7xl px-6 py-24 md:py-36">
@@ -174,10 +313,11 @@ export default function App() {
 
       {/* Services */}
       <section id="services" className="relative z-10 py-16 md:py-24">
+        <FloatingDecor count={5} variant="blue" />
         <div className="mx-auto max-w-7xl px-6">
           <h2 className="text-2xl md:text-3xl font-bold">What I Do</h2>
           <p className="text-slate-600 mt-1">End‑to‑end development with a focus on UX and performance</p>
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 [perspective:1000px]">
             <Service icon={Rocket} title="Web Apps"
               desc="High‑quality React frontends with smooth animations, accessibility, and responsive design." />
             <Service icon={Layers} title="APIs & Backends"
@@ -190,6 +330,7 @@ export default function App() {
 
       {/* Projects */}
       <section id="projects" className="relative z-10 py-16 md:py-24">
+        <FloatingDecor count={6} variant="purple" />
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex items-end justify-between">
             <div>
@@ -199,7 +340,7 @@ export default function App() {
             <a href="#contact" className="hidden md:inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700">Work with me <ArrowRight size={14} /></a>
           </div>
 
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 [perspective:1000px]">
             <Project
               title="Realtime Chat App"
               desc="WebSockets powered chat with rooms, typing indicators, and message search."
@@ -227,21 +368,24 @@ export default function App() {
 
       {/* Skills */}
       <section id="skills" className="relative z-10 py-16 md:py-24 bg-white/60 backdrop-blur">
+        <FloatingDecor count={4} variant="pink" />
         <div className="mx-auto max-w-7xl px-6">
           <h2 className="text-2xl md:text-3xl font-bold">Skills & Toolbox</h2>
           <p className="text-slate-600 mt-1">What I use to bring ideas to life</p>
 
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 [perspective:1000px]">
             {[
               ['Frontend', 'React, Vite, Tailwind, Framer Motion'],
               ['Backend', 'FastAPI, Node, REST, WebSockets'],
               ['Data & Cloud', 'MongoDB, Postgres, Docker, CI/CD'],
               ['Extras', 'Spline, Three.js, Testing, Design Systems'],
             ].map(([title, items]) => (
-              <div key={title} className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-800">{title}</h3>
-                <p className="text-sm text-slate-600 mt-2">{items}</p>
-              </div>
+              <TiltCard key={title}>
+                <div className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm">
+                  <h3 className="font-semibold text-slate-800">{title}</h3>
+                  <p className="text-sm text-slate-600 mt-2">{items}</p>
+                </div>
+              </TiltCard>
             ))}
           </div>
         </div>
@@ -292,6 +436,7 @@ export default function App() {
 
       {/* Contact */}
       <section id="contact" className="relative z-10 py-16 md:py-24">
+        <FloatingDecor count={5} variant="blue" />
         <div className="mx-auto max-w-4xl px-6">
           <div className="rounded-2xl border border-white/40 bg-white/70 backdrop-blur p-6 md:p-10 shadow-sm">
             <h2 className="text-2xl md:text-3xl font-bold">Let’s build something great</h2>
