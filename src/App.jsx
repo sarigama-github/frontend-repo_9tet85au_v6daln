@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Spline from '@splinetool/react-spline'
-import { Github, Linkedin, Mail, ExternalLink, Code2, Sparkles, ArrowRight } from 'lucide-react'
+import { Github, Linkedin, Mail, ExternalLink, Code2, Sparkles, ArrowRight, Menu, X, Briefcase, Rocket, Layers } from 'lucide-react'
 
 function Badge({ children }) {
   return (
@@ -44,8 +44,41 @@ function Project({ title, desc, tags = [], link, repo }) {
   )
 }
 
+function Service({ icon: Icon, title, desc }) {
+  return (
+    <div className="rounded-xl border border-white/40 bg-white/70 p-6 shadow-sm hover:shadow-md transition">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600/10 to-purple-600/10 text-blue-700">
+        <Icon size={18} />
+      </div>
+      <h3 className="mt-3 font-semibold text-slate-800">{title}</h3>
+      <p className="mt-1 text-sm text-slate-600">{desc}</p>
+    </div>
+  )
+}
+
+function TimelineItem({ role, company, period, points }) {
+  return (
+    <div className="relative pl-6">
+      <span className="absolute left-0 top-1.5 h-3 w-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 shadow ring-2 ring-white/80" />
+      <div className="rounded-lg bg-white/70 ring-1 ring-white/50 backdrop-blur p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 className="font-semibold text-slate-800">{role} • <span className="text-slate-600">{company}</span></h4>
+          <span className="text-xs text-slate-500">{period}</span>
+        </div>
+        <ul className="mt-2 list-disc ms-4 text-sm text-slate-600">
+          {points.map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [emailCopied, setEmailCopied] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText('youremail@example.com')
@@ -54,29 +87,57 @@ export default function App() {
     } catch {}
   }
 
+  const closeMenu = () => setMenuOpen(false)
+
+  const navLinks = [
+    { href: '#projects', label: 'Projects' },
+    { href: '#services', label: 'Services' },
+    { href: '#skills', label: 'Skills' },
+    { href: '#experience', label: 'Experience' },
+    { href: '#about', label: 'About' },
+    { href: '#contact', label: 'Contact' },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 text-slate-800" id="home">
       {/* Navbar */}
-      <header className="fixed top-0 inset-x-0 z-30 border-b border-white/40 bg-white/50 backdrop-blur">
+      <header className="fixed top-0 inset-x-0 z-30 border-b border-white/40 bg-white/60 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <a href="#home" className="font-bold tracking-tight text-lg">
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">DevPortfolio</span>
           </a>
+
           <nav className="hidden md:flex items-center gap-8 text-sm">
-            <a href="#projects" className="hover:text-slate-900">Projects</a>
-            <a href="#skills" className="hover:text-slate-900">Skills</a>
-            <a href="#about" className="hover:text-slate-900">About</a>
-            <a href="#contact" className="hover:text-slate-900">Contact</a>
+            {navLinks.map((l) => (
+              <a key={l.href} href={l.href} className="hover:text-slate-900">{l.label}</a>
+            ))}
             <div className="flex items-center gap-3">
               <a href="https://github.com/" target="_blank" rel="noreferrer" aria-label="GitHub" className="hover:text-slate-900"><Github size={18} /></a>
               <a href="https://linkedin.com/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="hover:text-slate-900"><Linkedin size={18} /></a>
               <a href="#contact" aria-label="Email" className="hover:text-slate-900"><Mail size={18} /></a>
             </div>
           </nav>
-          <a href="#contact" className="md:hidden inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded-md bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm">
-            Contact <ArrowRight size={14} />
-          </a>
+
+          <button aria-label="Toggle menu" onClick={() => setMenuOpen((s) => !s)} className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-md ring-1 ring-slate-200 bg-white/70">
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-white/50 bg-white/80 backdrop-blur">
+            <div className="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-2">
+              {navLinks.map((l) => (
+                <a key={l.href} href={l.href} onClick={closeMenu} className="py-2 text-sm">{l.label}</a>
+              ))}
+              <div className="mt-1 flex items-center gap-4 py-2">
+                <a href="https://github.com/" target="_blank" rel="noreferrer" aria-label="GitHub" className="hover:text-slate-900"><Github size={18} /></a>
+                <a href="https://linkedin.com/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="hover:text-slate-900"><Linkedin size={18} /></a>
+                <a href="#contact" onClick={closeMenu} aria-label="Email" className="hover:text-slate-900"><Mail size={18} /></a>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero with Spline */}
@@ -84,7 +145,7 @@ export default function App() {
         <div className="absolute inset-0">
           <Spline scene="https://prod.spline.design/VJLoxp84lCdVfdZu/scene.splinecode" style={{ width: '100%', height: '100%' }} />
         </div>
-        {/* Gradient overlay for readability - doesn't block interactions */}
+        {/* Gradient overlay for readability */}
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/70 via-white/40 to-white/90" />
 
         <div className="relative z-10">
@@ -107,6 +168,22 @@ export default function App() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Services */}
+      <section id="services" className="relative z-10 py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <h2 className="text-2xl md:text-3xl font-bold">What I Do</h2>
+          <p className="text-slate-600 mt-1">End‑to‑end development with a focus on UX and performance</p>
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Service icon={Rocket} title="Web Apps"
+              desc="High‑quality React frontends with smooth animations, accessibility, and responsive design." />
+            <Service icon={Layers} title="APIs & Backends"
+              desc="Reliable REST/WebSocket services, authentication, and databases with best practices." />
+            <Service icon={Briefcase} title="Product Engineering"
+              desc="From idea to launch — prototypes, iterations, and measurable outcomes." />
           </div>
         </div>
       </section>
@@ -166,6 +243,37 @@ export default function App() {
                 <p className="text-sm text-slate-600 mt-2">{items}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Experience */}
+      <section id="experience" className="relative z-10 py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="text-2xl md:text-3xl font-bold">Experience</h2>
+          <p className="text-slate-600 mt-1">Highlights from recent roles</p>
+
+          <div className="mt-8 grid gap-6">
+            <TimelineItem
+              role="Senior Frontend Engineer"
+              company="TechCo"
+              period="2022 — Present"
+              points={[
+                'Led migration to React + Vite, reducing bundle size by 38%.',
+                'Built design system components, improving dev velocity by 2x.',
+                'Shipped real‑time features with WebSockets and optimistic UI.',
+              ]}
+            />
+            <TimelineItem
+              role="Full‑stack Developer"
+              company="Startup Inc."
+              period="2020 — 2022"
+              points={[
+                'Delivered 10+ features end‑to‑end from API to UI.',
+                'Implemented CI/CD pipelines and containerized services.',
+                'Collaborated closely with product and design to iterate quickly.',
+              ]}
+            />
           </div>
         </div>
       </section>
